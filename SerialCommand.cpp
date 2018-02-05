@@ -93,9 +93,9 @@ void SerialCommand::setDefaultHandler(void (*function)(const char *)) {
 void SerialCommand::readSerial() {
   while (serial->available() > 0) {
     char inChar = serial->read();   // Read single available character, there may be more waiting
-    serial->print(inChar);   // Echo back to serial stream
 
     if (inChar == term) {     // Check for the terminator (default '\r') meaning end of command
+      serial->print(inChar);   // Echo back to serial stream
       #ifdef SERIALCOMMAND_DEBUG
         serial->print("Received: ");
         serial->println(buffer);
@@ -132,8 +132,14 @@ void SerialCommand::readSerial() {
       }
       clearBuffer();
       prompt();
-    }
-    else if (isprint(inChar)) {     // Only printable characters into the buffer
+    } else if(inChar == 0x8 && bufPos > 0) {
+      serial->write(0x08);
+      serial->print(' ');
+      serial->write(0x08);
+      bufPos--;
+      buffer[bufPos] = '\0';
+    } else if (isprint(inChar)) {     // Only printable characters into the buffer
+      serial->print(inChar);   // Echo back to serial stream
       if (bufPos < SERIALCOMMAND_BUFFER) {
         buffer[bufPos++] = inChar;  // Put character into buffer
         buffer[bufPos] = '\0';      // Null terminate

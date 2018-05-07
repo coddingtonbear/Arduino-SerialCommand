@@ -79,9 +79,15 @@ void SerialCommand::addCommand(const char *command, void (*function)()) {
   commandCount++;
 }
 
+void SerialCommand::disablePrompt() {
+  promptEnabled = false;
+}
+
 void SerialCommand::prompt() {
-  serial->println();
-  serial->print(SERIALCOMMAND_PROMPT);
+  if(promptEnabled) {
+    serial->println();
+    serial->print(SERIALCOMMAND_PROMPT);
+  }
 }
 
 /**

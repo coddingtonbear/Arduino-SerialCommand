@@ -57,6 +57,8 @@ class SerialCommand {
     void clearBuffer();   // Clears the input buffer.
     char *next();         // Returns pointer to next token found in command buffer (for getting arguments to commands).
 
+    void disablePrompt();
+
   private:
     // Command/handler dictionary
     struct SerialCommandCallback {
@@ -68,6 +70,8 @@ class SerialCommand {
 
     // Pointer to the default handler function
     void (*defaultHandler)(const char *);
+
+    bool promptEnabled = true;
 
     char delim[2]; // null-terminated list of character to be used as delimeters for tokenizing (default " ")
     char term;     // Character that signals end of command (default '\n')

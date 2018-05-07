@@ -52,6 +52,14 @@ SerialCommand::SerialCommand(Stream* serialPort)
   serial = serialPort;
 }
 
+void SerialCommand::help() {
+  serial->println("Available commands:");
+  serial->println("===================");
+  for (int i = 0; i < commandCount; i++) {
+    serial->println(commandList[i].command);
+  }
+  serial->println("===================");
+}
 /**
  * Adds a "command" and a handler function to the list of available commands.
  * This is used for matching a found token in the buffer, and gives the pointer
@@ -112,6 +120,12 @@ void SerialCommand::readSerial() {
             serial->print(commandList[i].command);
             serial->println("]");
           #endif
+
+          if (strncmp(command, "help", 4) == 0) {
+            help();
+            matched = true;
+            break;
+          }
 
           // Compare the found command against the list of known commands for a match
           if (strncmp(command, commandList[i].command, SERIALCOMMAND_MAXCOMMANDLENGTH) == 0) {

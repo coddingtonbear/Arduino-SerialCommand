@@ -79,12 +79,12 @@ void SerialCommand::addCommand(const char *command, void (*function)()) {
   commandCount++;
 }
 
-void SerialCommand::disablePrompt() {
-  promptEnabled = false;
+void SerialCommand::disableEcho() {
+  echoEnabled = false;
 }
 
 void SerialCommand::prompt() {
-  if(promptEnabled) {
+  if(echoEnabled) {
     serial->println();
     serial->print(SERIALCOMMAND_PROMPT);
   }
@@ -98,6 +98,75 @@ void SerialCommand::setDefaultHandler(void (*function)(const char *)) {
   defaultHandler = function;
 }
 
+void SerialCommand::readChar(char inChar) {
+  if (inChar == term) {     // Check for the terminator (default '\r') meaning end of command
+    if(echoEnabled) {
+      serial->print(inChar);   // Echo back to serial stream
+    }
+    #ifdef SERIALCOMMAND_DEBUG
+      serial->print("Received: ");
+      serial->println(buffer);
+    #endif
+
+    char *command = strtok_r(buffer, delim, &last);   // Search for command at start of buffer
+    if (command != NULL) {
+      boolean matched = false;
+      for (int i = 0; i < commandCount; i++) {
+        #ifdef SERIALCOMMAND_DEBUG
+          serial->print("Comparing [");
+          serial->print(command);
+          serial->print("] to [");
+          serial->print(commandList[i].command);
+          serial->println("]");
+        #endif
+
+        if (strncmp(command, "help", 4) == 0) {
+          help();
+          matched = true;
+          break;
+        }
+
+        // Compare the found command against the list of known commands for a match
+        if (strncmp(command, commandList[i].command, SERIALCOMMAND_MAXCOMMANDLENGTH) == 0) {
+          #ifdef SERIALCOMMAND_DEBUG
+            serial->print("Matched Command: ");
+            serial->println(command);
+          #endif
+
+          // Execute the stored handler function for the command
+          (*commandList[i].function)();
+          matched = true;
+          break;
+        }
+      }
+      if (!matched && (defaultHandler != NULL)) {
+        (*defaultHandler)(command);
+      }
+    }
+    clearBuffer();
+    prompt();
+  } else if(inChar == 0x8 && bufPos > 0) {
+    if(echoEnabled) {
+      serial->write(0x08);
+      serial->print(' ');
+      serial->write(0x08);
+    }
+    bufPos--;
+    buffer[bufPos] = '\0';
+  } else if (isprint(inChar)) {     // Only printable characters into the buffer
+    if(echoEnabled) {
+      serial->print(inChar);   // Echo back to serial stream
+    }
+    if (bufPos < SERIALCOMMAND_BUFFER) {
+      buffer[bufPos++] = inChar;  // Put character into buffer
+      buffer[bufPos] = '\0';      // Null terminate
+    } else {
+      #ifdef SERIALCOMMAND_DEBUG
+        serial->println("Line buffer is full - increase SERIALCOMMAND_BUFFER");
+      #endif
+    }
+  }
+}
 
 /**
  * This checks the Serial stream for characters, and assembles them into a buffer.
@@ -107,68 +176,8 @@ void SerialCommand::setDefaultHandler(void (*function)(const char *)) {
 void SerialCommand::readSerial() {
   while (serial->available() > 0) {
     char inChar = serial->read();   // Read single available character, there may be more waiting
+    readChar(inChar);
 
-    if (inChar == term) {     // Check for the terminator (default '\r') meaning end of command
-      serial->print(inChar);   // Echo back to serial stream
-      #ifdef SERIALCOMMAND_DEBUG
-        serial->print("Received: ");
-        serial->println(buffer);
-      #endif
-
-      char *command = strtok_r(buffer, delim, &last);   // Search for command at start of buffer
-      if (command != NULL) {
-        boolean matched = false;
-        for (int i = 0; i < commandCount; i++) {
-          #ifdef SERIALCOMMAND_DEBUG
-            serial->print("Comparing [");
-            serial->print(command);
-            serial->print("] to [");
-            serial->print(commandList[i].command);
-            serial->println("]");
-          #endif
-
-          if (strncmp(command, "help", 4) == 0) {
-            help();
-            matched = true;
-            break;
-          }
-
-          // Compare the found command against the list of known commands for a match
-          if (strncmp(command, commandList[i].command, SERIALCOMMAND_MAXCOMMANDLENGTH) == 0) {
-            #ifdef SERIALCOMMAND_DEBUG
-              serial->print("Matched Command: ");
-              serial->println(command);
-            #endif
-
-            // Execute the stored handler function for the command
-            (*commandList[i].function)();
-            matched = true;
-            break;
-          }
-        }
-        if (!matched && (defaultHandler != NULL)) {
-          (*defaultHandler)(command);
-        }
-      }
-      clearBuffer();
-      prompt();
-    } else if(inChar == 0x8 && bufPos > 0) {
-      serial->write(0x08);
-      serial->print(' ');
-      serial->write(0x08);
-      bufPos--;
-      buffer[bufPos] = '\0';
-    } else if (isprint(inChar)) {     // Only printable characters into the buffer
-      serial->print(inChar);   // Echo back to serial stream
-      if (bufPos < SERIALCOMMAND_BUFFER) {
-        buffer[bufPos++] = inChar;  // Put character into buffer
-        buffer[bufPos] = '\0';      // Null terminate
-      } else {
-        #ifdef SERIALCOMMAND_DEBUG
-          serial->println("Line buffer is full - increase SERIALCOMMAND_BUFFER");
-        #endif
-      }
-    }
   }
 }
 

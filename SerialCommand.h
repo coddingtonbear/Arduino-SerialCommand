@@ -38,10 +38,10 @@
 // Size of the input buffer in bytes (maximum length of one command plus arguments)
 #define SERIALCOMMAND_BUFFER 1024
 // Maximum length of a command excluding the terminating null
-#define SERIALCOMMAND_MAXCOMMANDLENGTH 8
+#define SERIALCOMMAND_MAXCOMMANDLENGTH 25
 
 // Uncomment the next line to run the library in debug mode (verbose messages)
-// #define SERIALCOMMAND_DEBUG
+//#define SERIALCOMMAND_DEBUG
 
 
 class SerialCommand {
@@ -54,10 +54,11 @@ class SerialCommand {
     void help();
     void prompt();
     void readSerial();    // Main entry point.
+    void readChar(char);
     void clearBuffer();   // Clears the input buffer.
     char *next();         // Returns pointer to next token found in command buffer (for getting arguments to commands).
 
-    void disablePrompt();
+    void disableEcho();
 
   private:
     // Command/handler dictionary
@@ -71,13 +72,13 @@ class SerialCommand {
     // Pointer to the default handler function
     void (*defaultHandler)(const char *);
 
-    bool promptEnabled = true;
+    bool echoEnabled = true;
 
     char delim[2]; // null-terminated list of character to be used as delimeters for tokenizing (default " ")
     char term;     // Character that signals end of command (default '\n')
 
     char buffer[SERIALCOMMAND_BUFFER + 1]; // Buffer of stored characters while waiting for terminator character
-    byte bufPos;                        // Current position in the buffer
+    int bufPos;                        // Current position in the buffer
     char *last;                         // State variable used by strtok_r during processing
 
     Stream* serial;
